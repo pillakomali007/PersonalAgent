@@ -1,0 +1,9 @@
+🌐 Step 5 - Run Agent on Phone (No PC Needed)
+Install Termux (free on F-Droid) on your Android:
+
+
+# Inside Termux on your phone:
+pkg update && pkg upgrade
+pkg install python
+pip install openai twilio speechrecognition pyttsx3
+python agent.py
