@@ -7,3 +7,6 @@ pkg update && pkg upgrade
 pkg install python
 pip install openai twilio speechrecognition pyttsx3
 python agent.py
+
+
+This runs the agent directly on your phone - no PC required.
