@@ -1,0 +1,145 @@
+🧠 Step 2 - The Agent Brain (Full Code)
+Save this as agent.py:
+
+
+import openai
+import json
+import re
+from twilio.rest import Client
+import speech_recognition as sr
+import pyttsx3
+
+# ─── CONFIG ───────────────────────────────────────────
+OPENAI_API_KEY = "your_openai_api_key"
+TWILIO_SID     = "your_twilio_sid"
+TWILIO_TOKEN   = "your_twilio_token"
+TWILIO_PHONE   = "+1your_twilio_number"
+MY_PHONE       = "+91your_phone_number"
+
+# ─── YOUR CONTACTS ────────────────────────────────────
+CONTACTS = {
+    "rahul":  "+919876543210",
+    "mom":    "+919876543211",
+    "raj":    "+919876543212",
+    # add more here
+}
+
+# ─── INIT ─────────────────────────────────────────────
+openai.api_key = OPENAI_API_KEY
+twilio_client  = Client(TWILIO_SID, TWILIO_TOKEN)
+engine         = pyttsx3.init()
+
+# ─── SPEAK ────────────────────────────────────────────
+def speak(text):
+    print(f"Agent: {text}")
+    engine.say(text)
+    engine.runAndWait()
+
+# ─── LISTEN ───────────────────────────────────────────
+def listen():
+    r = sr.Recognizer()
+    with sr.Microphone() as source:
+        print("Listening...")
+        r.adjust_for_ambient_noise(source)
+        audio = r.listen(source, timeout=5)
+    try:
+        command = r.recognize_google(audio)
+        print(f"You said: {command}")
+        return command
+    except:
+        return None
+
+# ─── GPT PARSE COMMAND ────────────────────────────────
+def parse_command(user_input):
+    system_prompt = """
+    You are a command parser for a phone agent.
+    Extract the intent and details from the user command.
+    Always respond in this exact JSON format:
+    {
+        "action": "send_whatsapp" | "make_call" | "open_app" | "unknown",
+        "contact": "contact name or null",
+        "message": "message text or null",
+        "app": "app name or null"
+    }
+    Examples:
+    - "send hello to rahul" → action: send_whatsapp, contact: rahul, message: hello
+    - "call mom" → action: make_call, contact: mom
+    - "open youtube" → action: open_app, app: youtube
+    """
+    response = openai.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user",   "content": user_input}
+        ]
+    )
+    return json.loads(response.choices[0].message.content)
+
+# ─── ACTIONS ──────────────────────────────────────────
+def send_whatsapp(contact_name, message):
+    number = CONTACTS.get(contact_name.lower())
+    if not number:
+        speak(f"Contact {contact_name} not found.")
+        return
+    whatsapp_number = f"whatsapp:{number}"
+    twilio_client.messages.create(
+        from_=f"whatsapp:{TWILIO_PHONE}",
+        to=whatsapp_number,
+        body=message
+    )
+    speak(f"WhatsApp message sent to {contact_name}")
+
+def make_call(contact_name):
+    number = CONTACTS.get(contact_name.lower())
+    if not number:
+        speak(f"Contact {contact_name} not found.")
+        return
+    twilio_client.calls.create(
+        to=number,
+        from_=TWILIO_PHONE,
+        twiml="<Response><Say>Hello, this is your personal agent calling.</Say></Response>"
+    )
+    speak(f"Calling {contact_name}")
+
+def open_app(app_name):
+    import subprocess
+    app_packages = {
+        "youtube":  "com.google.android.youtube",
+        "whatsapp": "com.whatsapp",
+        "instagram":"com.instagram.android",
+        "chrome":   "com.android.chrome",
+        "camera":   "com.android.camera",
+        "spotify":  "com.spotify.music",
+        # add more apps here
+    }
+    package = app_packages.get(app_name.lower())
+    if package:
+        subprocess.run(["adb", "shell", "monkey", "-p", package, "1"])
+        speak(f"Opening {app_name}")
+    else:
+        speak(f"App {app_name} not found in my list.")
+
+# ─── MAIN ROUTER ──────────────────────────────────────
+def handle_command(user_input):
+    parsed = parse_command(user_input)
+    action  = parsed.get("action")
+    contact = parsed.get("contact")
+    message = parsed.get("message")
+    app     = parsed.get("app")
+
+    if action == "send_whatsapp":
+        send_whatsapp(contact, message)
+    elif action == "make_call":
+        make_call(contact)
+    elif action == "open_app":
+        open_app(app)
+    else:
+        speak("I didn't understand that command.")
+
+# ─── RUN AGENT ────────────────────────────────────────
+if __name__ == "__main__":
+    speak("Agent is ready. How can I help you?")
+    while True:
+        command = listen()
+        if command:
+            handle_command(command)
