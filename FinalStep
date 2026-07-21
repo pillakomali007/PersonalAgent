@@ -1,0 +1,5 @@
+# Terminal 1 - Main Agent
+python agent.py
+
+# Terminal 2 - Notification Watcher
+python notification_reader.py
