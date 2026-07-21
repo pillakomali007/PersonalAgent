@@ -1,0 +1,50 @@
+🔔 Step 4 - Read & Auto-Reply Notifications
+Save as notification_reader.py:
+
+
+import subprocess
+import time
+import openai
+
+openai.api_key = "your_openai_api_key"
+
+AUTO_REPLY_CONTACTS = ["rahul", "mom"]  # auto-reply to these only
+
+def get_notifications():
+    result = subprocess.run(
+        ["adb", "shell", "dumpsys", "notification"],
+        capture_output=True, text=True
+    )
+    return result.stdout
+
+def generate_reply(message):
+    response = openai.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "Reply like a human in 1 short sentence."},
+            {"role": "user",   "content": f"Someone sent: {message}. Write a reply."}
+        ]
+    )
+    return response.choices[0].message.content
+
+def auto_reply_whatsapp(contact, reply_text):
+    # Open WhatsApp chat via ADB
+    subprocess.run([
+        "adb", "shell", "am", "start",
+        "-n", "com.whatsapp/.Main",
+        "--es", "jid", f"{contact}@s.whatsapp.net"
+    ])
+    time.sleep(2)
+    # Type the reply
+    subprocess.run(["adb", "shell", "input", "text", reply_text.replace(" ", "%s")])
+    time.sleep(1)
+    # Press Enter to send
+    subprocess.run(["adb", "shell", "input", "keyevent", "66"])
+
+# Run notification watcher
+while True:
+    notifs = get_notifications()
+    if "com.whatsapp" in notifs:
+        print("WhatsApp notification detected")
+        # parse and auto-reply logic here
+    time.sleep(10)
