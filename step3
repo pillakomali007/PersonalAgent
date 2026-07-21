@@ -1,0 +1,20 @@
+📲 Step 3 - ADB Setup (Phone Control)
+Enable ADB on your phone:
+
+
+Settings → About Phone → tap Build Number 7 times
+Settings → Developer Options → USB Debugging → ON
+
+
+Then on your PC:
+
+
+# Install ADB
+# Windows: download from https://developer.android.com/tools/releases/platform-tools
+# Mac/Linux:
+brew install android-platform-tools   # Mac
+sudo apt install adb                  # Linux
+
+# Connect phone via USB, then verify:
+adb devices
+# You should see your device listed
